@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>메소트론 알리미 · 이벤트 코인 획득 알림</title>
+  <meta name="description" content="메이플 화면을 캡처해서 'Collect M-Force Points!' 이벤트 코인 획득 타이밍을 자동으로 알려주는 크롬 알리미">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo">🪙</span>
+      <div>
+        <h1>메소트론 알리미</h1>
+        <p class="sub">이벤트 코인(M-Force) 획득 타이밍 자동 알림</p>
+      </div>
+    </div>
+    <span id="badge" class="badge idle">대기 중</span>
+  </header>
+
+  <main class="grid">
+    <section class="card main-card">
+      <div class="capture-row">
+        <button id="btnStart" class="btn primary big">화면 캡처 시작</button>
+        <button id="btnStop" class="btn big" disabled>중지</button>
+        <button id="btnPip" class="btn" title="작은 상태창을 항상 위에 띄웁니다">PIP 상태창</button>
+      </div>
+      <p class="hint">공유 창 선택에서 <b>메이플스토리 창</b>(또는 메이플이 떠 있는 화면 전체)을 고르세요. 메이플을 최소화하면 인식이 안 됩니다. 이 탭은 다른 탭/창으로 가려져도 계속 동작합니다.</p>
+
+      <div id="status" class="status">
+        <div class="status-main">
+          <span id="statusIcon" class="dot"></span>
+          <span id="statusText">캡처를 시작해 주세요.</span>
+        </div>
+        <div class="meters">
+          <div><label>일치도</label><b id="mScore">-</b></div>
+          <div><label>배율</label><b id="mScale">-</b></div>
+          <div><label>처리</label><b id="mMs">-</b></div>
+          <div><label>알림 횟수</label><b id="mCount">0</b></div>
+        </div>
+      </div>
+
+      <div class="preview-wrap">
+        <canvas id="preview" width="960" height="540"></canvas>
+        <div id="previewEmpty" class="preview-empty">미리보기</div>
+      </div>
+      <div class="preview-tools">
+        <label class="chk"><input type="checkbox" id="optPreview" checked> 미리보기 표시</label>
+        <label class="btn small file">스크린샷으로 테스트<input type="file" id="fileTest" accept="image/*" hidden></label>
+        <button id="btnRoi" class="btn small" title="미리보기에서 드래그해서 탐색 영역을 지정 (속도↑, 오탐↓)">탐색 영역 지정</button>
+        <button id="btnRoiClear" class="btn small" hidden>영역 해제</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>알람</h2>
+      <div class="field">
+        <label for="optSound">알람음</label>
+        <select id="optSound">
+          <option value="beep">비프</option>
+          <option value="alarm">경고음</option>
+          <option value="chime">차임</option>
+          <option value="ding">딩</option>
+          <option value="retro">레트로 (코인)</option>
+          <option value="soft">부드러운</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="optVolume">볼륨 <span id="vVolume"></span></label>
+        <input type="range" id="optVolume" min="0" max="100" step="5">
+      </div>
+      <div class="field">
+        <label for="optRepeat">반복 횟수 <span id="vRepeat"></span></label>
+        <input type="range" id="optRepeat" min="1" max="10" step="1">
+      </div>
+      <label class="chk"><input type="checkbox" id="optTts"> 음성 안내</label>
+      <input type="text" id="optTtsText" class="text" placeholder="코인 먹어!">
+      <label class="chk"><input type="checkbox" id="optNotify"> 윈도우 알림 띄우기</label>
+      <label class="chk"><input type="checkbox" id="optFlash"> 탭 제목 깜빡이기</label>
+      <button id="btnTest" class="btn">알람 테스트</button>
+
+      <h2>인식</h2>
+      <div class="field">
+        <label for="optThreshold">인식 기준 <span id="vThreshold"></span></label>
+        <input type="range" id="optThreshold" min="0.6" max="0.95" step="0.01">
+        <small>낮추면 잘 잡지만 오탐이 늘어요. 기본 0.78</small>
+      </div>
+      <div class="field">
+        <label for="optInterval">검사 주기 <span id="vInterval"></span></label>
+        <input type="range" id="optInterval" min="200" max="2000" step="100">
+      </div>
+      <div class="field">
+        <label for="optScale">게임 UI 배율</label>
+        <select id="optScale">
+          <option value="auto">자동 (찾으면 고정)</option>
+          <option value="1">100% (창모드 그대로 캡처)</option>
+          <option value="1.2">120% (1600→1920 전체화면)</option>
+          <option value="1.333">133% (1920→2560 전체화면)</option>
+          <option value="1.405">140% (1366→1920 전체화면)</option>
+          <option value="2">200% (1920→3840 전체화면)</option>
+          <option value="0.75">75%</option>
+        </select>
+        <small id="lockInfo"></small>
+      </div>
+      <div class="field">
+        <label for="optCooldown">재알림 대기 <span id="vCooldown"></span></label>
+        <input type="range" id="optCooldown" min="3" max="60" step="1">
+        <small>팝업이 사라진 뒤 이 시간이 지나야 다시 울립니다.</small>
+      </div>
+      <button id="btnReset" class="btn small ghost">설정 초기화</button>
+    </section>
+
+    <section class="card log-card">
+      <h2>알림 기록 <button id="btnClearLog" class="btn small ghost">지우기</button></h2>
+      <ul id="log" class="log"><li class="empty">아직 기록이 없어요.</li></ul>
+    </section>
+  </main>
+
+  <footer class="foot">
+    화면은 이 브라우저 안에서만 분석되고 어디에도 전송되지 않습니다 ·
+    <a href="https://github.com/hyeoxxx/mesotron-alert" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

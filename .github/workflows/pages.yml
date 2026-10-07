@@ -1,0 +1,15 @@
+# main 에 푸시하면 gh-pages 브랜치(GitHub Pages 배포 소스)로 그대로 반영
+name: Deploy to gh-pages
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git push --force origin HEAD:gh-pages
